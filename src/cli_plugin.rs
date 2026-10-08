@@ -104,7 +104,13 @@ impl CliPlugin for RedisCliPlugin {
                 ),
             Command::new("test")
                 .about("Test connection to Redis server")
-                .arg(conn_arg),
+                .arg(conn_arg.required(false))
+                .arg(
+                    Arg::new("stdin-config")
+                        .long("stdin-config")
+                        .action(clap::ArgAction::SetTrue)
+                        .help("Read connection configuration JSON from stdin"),
+                ),
         ]
     }
 
@@ -135,9 +141,18 @@ impl RedisCliPlugin {
         db_override: Option<u8>,
         ctx: &CliContext,
     ) -> Result<RedisConfig, VoidbError> {
-        let config = ctx.find_connection(conn_name).ok_or_else(|| {
-            VoidbError::Plugin(format!("Connection '{}' not found", conn_name))
-        })?;
+        let config = if let Some(config) = ctx.find_connection(conn_name) {
+            config.clone()
+        } else if let Ok((_profile, config)) =
+            ctx.resolve_profile_connection(conn_name, Some("redis"))
+        {
+            config
+        } else {
+            return Err(VoidbError::Plugin(format!(
+                "Connection or profile '{}' not found",
+                conn_name
+            )));
+        };
 
         if config.effective_plugin_id() != "redis" {
             return Err(VoidbError::Plugin(format!(
@@ -412,19 +427,61 @@ impl RedisCliPlugin {
         matches: &ArgMatches,
         ctx: &CliContext,
     ) -> Result<(), VoidbError> {
-        let conn_name = matches.get_one::<String>("connection").unwrap();
-        let config = ctx.find_connection(conn_name).ok_or_else(|| {
-            VoidbError::Plugin(format!("Connection '{}' not found", conn_name))
-        })?;
-        match crate::test_connection(config).await {
-            Ok(msg) => {
-                println!("{}", msg);
-                Ok(())
+        if matches.get_flag("stdin-config") {
+            use std::io::Read;
+            let mut input = String::new();
+            std::io::stdin()
+                .read_to_string(&mut input)
+                .map_err(|e| VoidbError::Config(format!("Failed to read stdin: {}", e)))?;
+            let val: serde_json::Value = serde_json::from_str(&input)
+                .map_err(|e| VoidbError::Config(format!("Invalid JSON on stdin: {}", e)))?;
+            let conn: voidb_core::connection::ConnectionConfig = if val.get("plugin_config").is_some() {
+                serde_json::from_value(val).map_err(|e| VoidbError::Config(e.to_string()))?
+            } else {
+                voidb_core::connection::ConnectionConfig {
+                    name: "stdin".into(),
+                    db_type: voidb_core::connection::DatabaseType::Plugin,
+                    plugin_id: Some("redis".into()),
+                    plugin_config: Some(val),
+                }
+            };
+            match crate::test_connection(&conn).await {
+                Ok(msg) => {
+                    println!("{}", msg);
+                    Ok(())
+                }
+                Err(e) => {
+                    println!("FAIL: {}", e);
+                    Err(VoidbError::Connection(e.to_string()))
+                }
             }
-            Err(e) => {
-                println!("FAIL: {}", e);
-                Err(VoidbError::Connection(e.to_string()))
+        } else if let Some(conn_name) = matches.get_one::<String>("connection") {
+            let config = if let Some(config) = ctx.find_connection(conn_name) {
+                config.clone()
+            } else if let Ok((_profile, config)) =
+                ctx.resolve_profile_connection(conn_name, Some("redis"))
+            {
+                config
+            } else {
+                return Err(VoidbError::Plugin(format!(
+                    "Connection or profile '{}' not found",
+                    conn_name
+                )));
+            };
+            match crate::test_connection(&config).await {
+                Ok(msg) => {
+                    println!("{}", msg);
+                    Ok(())
+                }
+                Err(e) => {
+                    println!("FAIL: {}", e);
+                    Err(VoidbError::Connection(e.to_string()))
+                }
             }
+        } else {
+            Err(VoidbError::Plugin(
+                "Either --connection or --stdin-config is required".into(),
+            ))
         }
     }
 }
