@@ -93,7 +93,7 @@ impl CliPlugin for RedisCliPlugin {
                 ),
             Command::new("exec")
                 .about("Execute a raw Redis command")
-                .arg(conn_arg)
+                .arg(conn_arg.clone())
                 .arg(db_arg)
                 .arg(
                     Arg::new("command")
@@ -102,6 +102,9 @@ impl CliPlugin for RedisCliPlugin {
                         .num_args(1..)
                         .help("Redis command"),
                 ),
+            Command::new("test")
+                .about("Test connection to Redis server")
+                .arg(conn_arg),
         ]
     }
 
@@ -120,6 +123,7 @@ impl CliPlugin for RedisCliPlugin {
             "type" => self.handle_type(matches, ctx).await,
             "info" => self.handle_info(matches, ctx).await,
             "exec" => self.handle_exec(matches, ctx).await,
+            "test" => self.handle_test(matches, ctx).await,
             _ => Err(VoidbError::Plugin(format!("Unknown command: {}", command))),
         }
     }
@@ -401,5 +405,26 @@ impl RedisCliPlugin {
         }
         eprintln!("({:.2}ms)", result.duration_ms as f64);
         Ok(())
+    }
+
+    async fn handle_test(
+        &self,
+        matches: &ArgMatches,
+        ctx: &CliContext,
+    ) -> Result<(), VoidbError> {
+        let conn_name = matches.get_one::<String>("connection").unwrap();
+        let config = ctx.find_connection(conn_name).ok_or_else(|| {
+            VoidbError::Plugin(format!("Connection '{}' not found", conn_name))
+        })?;
+        match crate::test_connection(config).await {
+            Ok(msg) => {
+                println!("{}", msg);
+                Ok(())
+            }
+            Err(e) => {
+                println!("FAIL: {}", e);
+                Err(VoidbError::Connection(e.to_string()))
+            }
+        }
     }
 }
