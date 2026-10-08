@@ -1,0 +1,10 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "section": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "type": "object"
+}

@@ -1,0 +1,76 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "cursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "key_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "keys": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "key_type": {
+            "enum": [
+              "string",
+              "hash",
+              "list",
+              "set",
+              "zset",
+              "stream",
+              "unknown"
+            ],
+            "type": "string"
+          },
+          "ttl": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "key_type",
+          "ttl"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "limit": {
+      "maximum": 200,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "next_cursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pattern": {
+      "type": "string"
+    },
+    "scan_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "truncated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "pattern",
+    "keys",
+    "limit",
+    "key_count",
+    "truncated"
+  ],
+  "type": "object"
+}

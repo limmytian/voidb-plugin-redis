@@ -1,0 +1,38 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "command_name": {
+      "type": "string"
+    },
+    "destructive": {
+      "type": "boolean"
+    },
+    "details": {
+      "type": "object"
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "duration_ms": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "output": {
+      "type": "string"
+    },
+    "output_byte_limit": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "output_truncated": {
+      "type": "boolean"
+    },
+    "would_execute": {
+      "type": "boolean"
+    }
+  },
+  "type": "object"
+}

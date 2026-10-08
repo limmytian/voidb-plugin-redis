@@ -1,0 +1,11 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "pattern": {
+      "default": "*",
+      "description": "Redis SCAN pattern. Use InvocationControls.page for cursor and limit.",
+      "type": "string"
+    }
+  },
+  "type": "object"
+}

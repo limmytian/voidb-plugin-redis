@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "db": {
+      "default": 0,
+      "type": "integer"
+    },
+    "host": {
+      "default": "localhost",
+      "type": "string"
+    },
+    "password": {
+      "type": "string"
+    },
+    "port": {
+      "default": 6379,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "host",
+    "port"
+  ],
+  "title": "RedisConnectionProfile",
+  "type": "object"
+}

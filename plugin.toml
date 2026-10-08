@@ -1,0 +1,160 @@
+id = "redis"
+name = "Redis Key-Value Store Plugin"
+version = "0.3.1"
+protocol_version = "1"
+description = "Redis in-memory data store process plugin for VoidB."
+license = "Apache-2.0"
+homepage = "https://github.com/limmytian/voidb-plugin-redis"
+
+[runtime]
+command = "voidb-plugin-redis"
+args = ["serve"]
+transport = "stdio-jsonrpc"
+
+[connections]
+profile_schema = "schemas/profile.schema.json"
+secret_classes = ["database_password"]
+
+[[capabilities]]
+id = "keys"
+description = "Scan Redis keys by pattern."
+input_schema = "schemas/keys-input.schema.json"
+output_schema = "schemas/keys-output.schema.json"
+permissions = ["connection.read", "redis.keys"]
+risk = "readonly"
+destructive = false
+streaming = false
+connection_required = true
+supports_dry_run = false
+default_timeout_ms = 30000
+
+[[capabilities]]
+id = "get"
+description = "Fetch one Redis key with type-aware data."
+input_schema = "schemas/get-input.schema.json"
+output_schema = "schemas/get-output.schema.json"
+permissions = ["connection.read", "redis.get"]
+risk = "readonly"
+destructive = false
+streaming = false
+connection_required = true
+supports_dry_run = false
+default_timeout_ms = 30000
+
+[[capabilities]]
+id = "set"
+description = "Set a Redis string value."
+input_schema = "schemas/set-input.schema.json"
+output_schema = "schemas/set-output.schema.json"
+permissions = ["connection.write", "redis.set"]
+risk = "destructive"
+destructive = true
+streaming = false
+connection_required = true
+supports_dry_run = true
+default_timeout_ms = 30000
+
+[[capabilities]]
+id = "del"
+description = "Delete one Redis key."
+input_schema = "schemas/del-input.schema.json"
+output_schema = "schemas/del-output.schema.json"
+permissions = ["connection.write", "redis.del"]
+risk = "destructive"
+destructive = true
+streaming = false
+connection_required = true
+supports_dry_run = true
+default_timeout_ms = 30000
+
+[[capabilities]]
+id = "ttl"
+description = "Read one Redis key TTL without mutating it."
+input_schema = "schemas/ttl-input.schema.json"
+output_schema = "schemas/ttl-output.schema.json"
+permissions = ["connection.read", "redis.ttl"]
+risk = "readonly"
+destructive = false
+streaming = false
+connection_required = true
+supports_dry_run = false
+default_timeout_ms = 30000
+
+[[capabilities]]
+id = "expire"
+description = "Set or remove one Redis key TTL."
+input_schema = "schemas/expire-input.schema.json"
+output_schema = "schemas/expire-output.schema.json"
+permissions = ["connection.write", "redis.expire"]
+risk = "destructive"
+destructive = true
+streaming = false
+connection_required = true
+supports_dry_run = true
+default_timeout_ms = 30000
+
+[[capabilities]]
+id = "info"
+description = "Fetch Redis INFO sections."
+input_schema = "schemas/info-input.schema.json"
+output_schema = "schemas/info-output.schema.json"
+permissions = ["connection.read", "redis.info"]
+risk = "readonly"
+destructive = false
+streaming = false
+connection_required = true
+supports_dry_run = false
+default_timeout_ms = 30000
+
+[[capabilities]]
+id = "exec"
+description = "Execute a raw Redis command string."
+input_schema = "schemas/exec-input.schema.json"
+output_schema = "schemas/exec-output.schema.json"
+permissions = ["connection.write", "redis.exec"]
+risk = "destructive"
+destructive = true
+streaming = false
+connection_required = true
+supports_dry_run = true
+default_timeout_ms = 30000
+
+[[capabilities]]
+id = "pubsub_read"
+description = "Read bounded Redis Pub/Sub messages from explicitly scoped channels or safe patterns."
+input_schema = "schemas/pubsub_read-input.schema.json"
+output_schema = "schemas/pubsub_read-output.schema.json"
+permissions = ["connection.read", "redis.pubsub"]
+risk = "readonly"
+destructive = false
+streaming = true
+connection_required = true
+supports_dry_run = false
+default_timeout_ms = 30000
+
+[[capabilities]]
+id = "monitor_read"
+description = "Observe bounded Redis MONITOR command metadata with arguments always omitted."
+input_schema = "schemas/monitor_read-input.schema.json"
+output_schema = "schemas/monitor_read-output.schema.json"
+permissions = ["connection.read", "redis.monitor"]
+risk = "externalsideeffect"
+destructive = false
+streaming = true
+connection_required = true
+supports_dry_run = false
+default_timeout_ms = 30000
+
+[[capabilities]]
+id = "stream_read"
+description = "Read Redis Stream entries through a bounded blocking, resumable session."
+input_schema = "schemas/stream_read-input.schema.json"
+output_schema = "schemas/stream_read-output.schema.json"
+permissions = ["connection.read", "redis.streams.read"]
+risk = "readonly"
+destructive = false
+streaming = true
+connection_required = true
+supports_dry_run = false
+default_timeout_ms = 30000
+

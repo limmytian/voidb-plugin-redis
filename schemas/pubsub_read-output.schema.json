@@ -1,0 +1,64 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "checkpoint": {
+      "type": "object"
+    },
+    "coalesced_events": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "dropped_bytes": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "dropped_events": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "events": {
+      "maxItems": 1000,
+      "type": "array"
+    },
+    "next_sequence": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "oldest_available_sequence": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "protocol_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "reconnect_attempts": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "resume_cursor": {
+      "type": "object"
+    },
+    "source_closed": {
+      "type": "boolean"
+    },
+    "timed_out": {
+      "type": "boolean"
+    },
+    "truncated": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "protocol_version",
+    "events",
+    "next_sequence",
+    "timed_out",
+    "source_closed",
+    "dropped_events",
+    "dropped_bytes",
+    "coalesced_events",
+    "reconnect_attempts"
+  ],
+  "type": "object"
+}

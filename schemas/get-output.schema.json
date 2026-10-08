@@ -1,0 +1,70 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "collection_has_more": {
+      "type": "boolean"
+    },
+    "collection_item_limit": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "hash_fields": {
+      "type": "array"
+    },
+    "key": {
+      "type": "string"
+    },
+    "key_type": {
+      "enum": [
+        "string",
+        "hash",
+        "list",
+        "set",
+        "zset",
+        "stream",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "list_items": {
+      "type": "array"
+    },
+    "set_members": {
+      "type": "array"
+    },
+    "size": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "stream_messages": {
+      "type": "array"
+    },
+    "string_byte_limit": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "string_truncated": {
+      "type": "boolean"
+    },
+    "string_value": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ttl": {
+      "type": "integer"
+    },
+    "zset_members": {
+      "type": "array"
+    }
+  },
+  "required": [
+    "key",
+    "key_type",
+    "ttl",
+    "size",
+    "collection_has_more"
+  ],
+  "type": "object"
+}

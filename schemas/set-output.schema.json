@@ -1,0 +1,27 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "destructive": {
+      "type": "boolean"
+    },
+    "details": {
+      "type": "object"
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "message": {
+      "type": "string"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "would_execute": {
+      "type": "boolean"
+    }
+  },
+  "type": "object"
+}

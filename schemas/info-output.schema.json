@@ -1,0 +1,28 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "sections": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "entries"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "sections"
+  ],
+  "type": "object"
+}

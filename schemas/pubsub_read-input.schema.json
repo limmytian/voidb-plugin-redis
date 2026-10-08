@@ -1,0 +1,25 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "after_sequence": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "max_bytes": {
+      "maximum": 1048576,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_events": {
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "wait_timeout_ms": {
+      "maximum": 30000,
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "type": "object"
+}

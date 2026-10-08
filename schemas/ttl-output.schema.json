@@ -1,0 +1,16 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "key": {
+      "type": "string"
+    },
+    "ttl": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "key",
+    "ttl"
+  ],
+  "type": "object"
+}
