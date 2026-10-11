@@ -11,6 +11,8 @@ command = "voidb-plugin-redis"
 args = ["serve"]
 transport = "stdio-jsonrpc"
 
+[runtime.env]
+
 [connections]
 profile_schema = "schemas/profile.schema.json"
 secret_classes = ["password"]
@@ -20,141 +22,750 @@ id = "keys"
 description = "Scan Redis keys by pattern."
 input_schema = "schemas/keys-input.schema.json"
 output_schema = "schemas/keys-output.schema.json"
-permissions = ["connection.read", "redis.keys"]
+permissions = [
+    "connection.read",
+    "redis.keys",
+]
 risk = "read_only"
 destructive = false
 streaming = false
+execution_mode = "stateless"
 connection_required = true
+required_secret_classes = []
 supports_dry_run = false
 default_timeout_ms = 30000
+
+[capabilities.authorization]
+declared = true
+interactive_execute = false
+capability_wide_allowed = true
+
+[[capabilities.authorization.session_purposes]]
+kind = "cache_command"
+
+[capabilities.authorization.approval_schema]
+version = 1
+
+[[capabilities.authorization.approval_schema.fields]]
+path = "/pattern"
+label = "Key pattern"
+value_type = "string"
+required = false
+constraint = "exact"
+risk_emphasis = "normal"
 
 [[capabilities]]
 id = "get"
 description = "Fetch one Redis key with type-aware data."
 input_schema = "schemas/get-input.schema.json"
 output_schema = "schemas/get-output.schema.json"
-permissions = ["connection.read", "redis.get"]
+permissions = [
+    "connection.read",
+    "redis.get",
+]
 risk = "read_only"
 destructive = false
 streaming = false
+execution_mode = "stateless"
 connection_required = true
+required_secret_classes = []
 supports_dry_run = false
 default_timeout_ms = 30000
+
+[capabilities.authorization]
+declared = true
+interactive_execute = false
+note = "The declared key prefix is revalidated against the normalized operation."
+capability_wide_allowed = true
+
+[[capabilities.authorization.session_purposes]]
+kind = "cache_command"
+
+[capabilities.authorization.approval_schema]
+version = 1
+
+[[capabilities.authorization.approval_schema.fields]]
+path = "/key"
+label = "Key or key prefix"
+value_type = "resource_id"
+required = true
+constraint = "prefix"
+risk_emphasis = "normal"
 
 [[capabilities]]
 id = "set"
 description = "Set a Redis string value."
 input_schema = "schemas/set-input.schema.json"
 output_schema = "schemas/set-output.schema.json"
-permissions = ["connection.write", "redis.set"]
+permissions = [
+    "connection.write",
+    "redis.set",
+]
 risk = "destructive"
 destructive = true
 streaming = false
+execution_mode = "stateless"
 connection_required = true
+required_secret_classes = []
 supports_dry_run = true
 default_timeout_ms = 30000
+
+[capabilities.authorization]
+declared = true
+interactive_execute = false
+note = "The declared key prefix is revalidated against the normalized operation."
+capability_wide_allowed = true
+
+[[capabilities.authorization.session_purposes]]
+kind = "cache_command"
+
+[capabilities.authorization.approval_schema]
+version = 1
+
+[[capabilities.authorization.approval_schema.fields]]
+path = "/key"
+label = "Key or key prefix"
+value_type = "resource_id"
+required = true
+constraint = "prefix"
+risk_emphasis = "destructive"
 
 [[capabilities]]
 id = "del"
 description = "Delete one Redis key."
 input_schema = "schemas/del-input.schema.json"
 output_schema = "schemas/del-output.schema.json"
-permissions = ["connection.write", "redis.del"]
+permissions = [
+    "connection.write",
+    "redis.del",
+]
 risk = "destructive"
 destructive = true
 streaming = false
+execution_mode = "stateless"
 connection_required = true
+required_secret_classes = []
 supports_dry_run = true
 default_timeout_ms = 30000
+
+[capabilities.authorization]
+declared = true
+interactive_execute = false
+note = "The declared key prefix is revalidated against the normalized operation."
+capability_wide_allowed = true
+
+[[capabilities.authorization.session_purposes]]
+kind = "cache_command"
+
+[capabilities.authorization.approval_schema]
+version = 1
+
+[[capabilities.authorization.approval_schema.fields]]
+path = "/key"
+label = "Key or key prefix"
+value_type = "resource_id"
+required = true
+constraint = "prefix"
+risk_emphasis = "destructive"
 
 [[capabilities]]
 id = "ttl"
 description = "Read one Redis key TTL without mutating it."
 input_schema = "schemas/ttl-input.schema.json"
 output_schema = "schemas/ttl-output.schema.json"
-permissions = ["connection.read", "redis.ttl"]
+permissions = [
+    "connection.read",
+    "redis.ttl",
+]
 risk = "read_only"
 destructive = false
 streaming = false
+execution_mode = "stateless"
 connection_required = true
+required_secret_classes = []
 supports_dry_run = false
 default_timeout_ms = 30000
+
+[capabilities.authorization]
+declared = true
+interactive_execute = false
+note = "TTL inspection is read-only; mutation is isolated in redis.expire."
+capability_wide_allowed = true
+
+[[capabilities.authorization.session_purposes]]
+kind = "cache_command"
+
+[capabilities.authorization.approval_schema]
+version = 1
+
+[[capabilities.authorization.approval_schema.fields]]
+path = "/key"
+label = "Key or key prefix"
+value_type = "resource_id"
+required = true
+constraint = "prefix"
+risk_emphasis = "normal"
 
 [[capabilities]]
 id = "expire"
 description = "Set or remove one Redis key TTL."
 input_schema = "schemas/expire-input.schema.json"
 output_schema = "schemas/expire-output.schema.json"
-permissions = ["connection.write", "redis.expire"]
+permissions = [
+    "connection.write",
+    "redis.expire",
+]
 risk = "destructive"
 destructive = true
 streaming = false
+execution_mode = "stateless"
 connection_required = true
+required_secret_classes = []
 supports_dry_run = true
 default_timeout_ms = 30000
+
+[capabilities.authorization]
+declared = true
+interactive_execute = false
+note = "TTL mutation is isolated from redis.ttl and requires destructive acknowledgement."
+capability_wide_allowed = true
+
+[[capabilities.authorization.session_purposes]]
+kind = "cache_command"
+
+[capabilities.authorization.approval_schema]
+version = 1
+
+[[capabilities.authorization.approval_schema.fields]]
+path = "/key"
+label = "Key or key prefix"
+value_type = "resource_id"
+required = true
+constraint = "prefix"
+risk_emphasis = "destructive"
 
 [[capabilities]]
 id = "info"
 description = "Fetch Redis INFO sections."
 input_schema = "schemas/info-input.schema.json"
 output_schema = "schemas/info-output.schema.json"
-permissions = ["connection.read", "redis.info"]
+permissions = [
+    "connection.read",
+    "redis.info",
+]
 risk = "read_only"
 destructive = false
 streaming = false
+execution_mode = "stateless"
 connection_required = true
+required_secret_classes = []
 supports_dry_run = false
 default_timeout_ms = 30000
+
+[capabilities.authorization]
+declared = true
+interactive_execute = false
+capability_wide_allowed = true
+
+[[capabilities.authorization.session_purposes]]
+kind = "cache_command"
 
 [[capabilities]]
 id = "exec"
 description = "Execute a raw Redis command string."
 input_schema = "schemas/exec-input.schema.json"
 output_schema = "schemas/exec-output.schema.json"
-permissions = ["connection.write", "redis.exec"]
+permissions = [
+    "connection.write",
+    "redis.exec",
+]
 risk = "destructive"
 destructive = true
 streaming = false
+execution_mode = "both"
 connection_required = true
+required_secret_classes = []
 supports_dry_run = true
 default_timeout_ms = 30000
+
+[capabilities.authorization]
+declared = true
+interactive_execute = false
+note = "Raw commands are exact-string constrained and remain outside the recommended Interactive/Execute preset."
+capability_wide_allowed = true
+
+[[capabilities.authorization.session_purposes]]
+kind = "cache_command"
+
+[[capabilities.authorization.session_purposes]]
+kind = "database_transaction"
+
+[capabilities.authorization.approval_schema]
+version = 1
+
+[[capabilities.authorization.approval_schema.fields]]
+path = "/command"
+label = "Raw Redis command"
+value_type = "string"
+required = true
+constraint = "exact"
+risk_emphasis = "destructive"
+
+[capabilities.session_handoff]
+capabilities = ["redis.exec"]
+
+[capabilities.session_handoff.purpose]
+kind = "cache_command"
 
 [[capabilities]]
 id = "pubsub_read"
 description = "Read bounded Redis Pub/Sub messages from explicitly scoped channels or safe patterns."
 input_schema = "schemas/pubsub_read-input.schema.json"
 output_schema = "schemas/pubsub_read-output.schema.json"
-permissions = ["connection.read", "redis.pubsub"]
+permissions = [
+    "connection.read",
+    "redis.pubsub",
+]
 risk = "read_only"
 destructive = false
 streaming = true
+execution_mode = "session_only"
 connection_required = true
+required_secret_classes = []
 supports_dry_run = false
 default_timeout_ms = 30000
+
+[capabilities.authorization]
+declared = true
+interactive_execute = false
+note = "Redis live-session resource and subscription scope are revalidated when the session opens."
+capability_wide_allowed = true
+
+[[capabilities.authorization.session_purposes]]
+kind = "watch_stream"
+
+[capabilities.authorization.approval_schema]
+version = 1
+
+[[capabilities.authorization.approval_schema.fields]]
+path = "/parameters/channels"
+label = "Channels"
+value_type = "string_list"
+required = false
+constraint = "subset"
+risk_emphasis = "normal"
+
+[[capabilities.authorization.approval_schema.fields]]
+path = "/parameters/patterns"
+label = "Safe channel patterns"
+value_type = "string_list"
+required = false
+constraint = "subset"
+risk_emphasis = "normal"
+
+[capabilities.session_handoff]
+capabilities = ["redis.pubsub_read"]
+
+[capabilities.session_handoff.purpose]
+kind = "watch_stream"
+
+[capabilities.session_handoff.live_session]
+protocol_version = 1
+start_risk = "read_only"
+
+[capabilities.session_handoff.live_session.kind]
+kind = "subscription"
+
+[capabilities.session_handoff.live_session.resource]
+resource_type = "redis_subscription"
+identity_fields = ["/scope"]
+audit_identity = "fingerprint"
+
+[capabilities.session_handoff.live_session.resource.identity_schema]
+additionalProperties = false
+required = ["scope"]
+type = "object"
+
+[capabilities.session_handoff.live_session.resource.identity_schema.properties.scope]
+const = "subscriptions"
+
+[capabilities.session_handoff.live_session.start_parameters_schema]
+additionalProperties = false
+type = "object"
+
+[[capabilities.session_handoff.live_session.start_parameters_schema.anyOf]]
+required = ["channels"]
+
+[[capabilities.session_handoff.live_session.start_parameters_schema.anyOf]]
+required = ["patterns"]
+
+[capabilities.session_handoff.live_session.start_parameters_schema.properties.channels]
+maxItems = 32
+minItems = 1
+type = "array"
+uniqueItems = true
+
+[capabilities.session_handoff.live_session.start_parameters_schema.properties.channels.items]
+maxLength = 256
+minLength = 1
+type = "string"
+
+[capabilities.session_handoff.live_session.start_parameters_schema.properties.patterns]
+maxItems = 32
+minItems = 1
+type = "array"
+uniqueItems = true
+
+[capabilities.session_handoff.live_session.start_parameters_schema.properties.patterns.items]
+maxLength = 256
+minLength = 1
+type = "string"
+
+[capabilities.session_handoff.live_session.event_schema]
+additionalProperties = false
+required = [
+    "channel",
+    "payload",
+    "payload_bytes",
+    "truncated",
+]
+type = "object"
+
+[capabilities.session_handoff.live_session.event_schema.properties.channel]
+type = "string"
+
+[capabilities.session_handoff.live_session.event_schema.properties.pattern]
+type = [
+    "string",
+    "null",
+]
+
+[capabilities.session_handoff.live_session.event_schema.properties.payload]
+type = "string"
+
+[capabilities.session_handoff.live_session.event_schema.properties.payload_bytes]
+minimum = 0
+type = "integer"
+
+[capabilities.session_handoff.live_session.event_schema.properties.truncated]
+type = "boolean"
+
+[capabilities.session_handoff.live_session.operations]
+events = "redis.pubsub_read"
+
+[capabilities.session_handoff.live_session.buffer]
+max_events = 2000
+max_bytes = 2097152
+overflow = "drop_oldest"
+
+[capabilities.session_handoff.live_session.reconnect]
+mode = "transient"
+max_attempts = 5
+initial_backoff_ms = 250
+max_backoff_ms = 5000
+resume = "restart"
+
+[capabilities.session_handoff.live_session.delivery]
+backpressure = "bounded_buffer"
+cursor_scope = "optional"
+max_read_wait_ms = 30000
+
+[capabilities.session_handoff.live_session.delivery.heartbeat]
+interval_ms = 15000
+idle_timeout_ms = 60000
+
+[capabilities.session_handoff.live_session.control]
+cancel = "call_only"
+close = "stop_observation"
 
 [[capabilities]]
 id = "monitor_read"
 description = "Observe bounded Redis MONITOR command metadata with arguments always omitted."
 input_schema = "schemas/monitor_read-input.schema.json"
 output_schema = "schemas/monitor_read-output.schema.json"
-permissions = ["connection.read", "redis.monitor"]
+permissions = [
+    "connection.read",
+    "redis.monitor",
+]
 risk = "external_side_effect"
 destructive = false
 streaming = true
+execution_mode = "session_only"
 connection_required = true
+required_secret_classes = []
 supports_dry_run = false
 default_timeout_ms = 30000
+
+[capabilities.authorization]
+declared = true
+interactive_execute = false
+note = "MONITOR is excluded from broad read presets, requires explicit session-open acknowledgement, and emits command metadata without arguments."
+capability_wide_allowed = true
+
+[[capabilities.authorization.session_purposes]]
+kind = "watch_stream"
+
+[capabilities.authorization.approval_schema]
+version = 1
+
+[[capabilities.authorization.approval_schema.fields]]
+path = "/resource/scope"
+label = "Server scope"
+value_type = "resource_id"
+required = true
+constraint = "exact"
+risk_emphasis = "privilege_escalation"
+
+[capabilities.session_handoff]
+capabilities = ["redis.monitor_read"]
+
+[capabilities.session_handoff.purpose]
+kind = "watch_stream"
+
+[capabilities.session_handoff.live_session]
+protocol_version = 1
+start_risk = "external_side_effect"
+
+[capabilities.session_handoff.live_session.kind]
+kind = "events"
+
+[capabilities.session_handoff.live_session.resource]
+resource_type = "redis_server"
+identity_fields = ["/scope"]
+audit_identity = "fingerprint"
+
+[capabilities.session_handoff.live_session.resource.identity_schema]
+additionalProperties = false
+required = ["scope"]
+type = "object"
+
+[capabilities.session_handoff.live_session.resource.identity_schema.properties.scope]
+const = "server"
+
+[capabilities.session_handoff.live_session.start_parameters_schema]
+additionalProperties = false
+type = "object"
+
+[capabilities.session_handoff.live_session.event_schema]
+additionalProperties = false
+required = [
+    "timestamp",
+    "database",
+    "command_name",
+    "argument_count",
+    "raw_omitted",
+]
+type = "object"
+
+[capabilities.session_handoff.live_session.event_schema.properties.argument_count]
+minimum = 0
+type = "integer"
+
+[capabilities.session_handoff.live_session.event_schema.properties.command_name]
+type = "string"
+
+[capabilities.session_handoff.live_session.event_schema.properties.database]
+type = [
+    "integer",
+    "null",
+]
+
+[capabilities.session_handoff.live_session.event_schema.properties.raw_omitted]
+const = true
+
+[capabilities.session_handoff.live_session.event_schema.properties.timestamp]
+type = [
+    "number",
+    "null",
+]
+
+[capabilities.session_handoff.live_session.operations]
+events = "redis.monitor_read"
+
+[capabilities.session_handoff.live_session.buffer]
+max_events = 2000
+max_bytes = 2097152
+overflow = "drop_oldest"
+
+[capabilities.session_handoff.live_session.reconnect]
+mode = "transient"
+max_attempts = 5
+initial_backoff_ms = 250
+max_backoff_ms = 5000
+resume = "restart"
+
+[capabilities.session_handoff.live_session.delivery]
+backpressure = "bounded_buffer"
+cursor_scope = "optional"
+max_read_wait_ms = 30000
+
+[capabilities.session_handoff.live_session.delivery.heartbeat]
+interval_ms = 15000
+idle_timeout_ms = 60000
+
+[capabilities.session_handoff.live_session.control]
+cancel = "call_only"
+close = "stop_observation"
 
 [[capabilities]]
 id = "stream_read"
 description = "Read Redis Stream entries through a bounded blocking, resumable session."
 input_schema = "schemas/stream_read-input.schema.json"
 output_schema = "schemas/stream_read-output.schema.json"
-permissions = ["connection.read", "redis.streams.read"]
+permissions = [
+    "connection.read",
+    "redis.streams.read",
+]
 risk = "read_only"
 destructive = false
 streaming = true
+execution_mode = "session_only"
 connection_required = true
+required_secret_classes = []
 supports_dry_run = false
 default_timeout_ms = 30000
 
+[capabilities.authorization]
+declared = true
+interactive_execute = false
+note = "Redis live-session resource and subscription scope are revalidated when the session opens."
+capability_wide_allowed = true
+
+[[capabilities.authorization.session_purposes]]
+kind = "watch_stream"
+
+[capabilities.authorization.approval_schema]
+version = 1
+
+[[capabilities.authorization.approval_schema.fields]]
+path = "/resource/key"
+label = "Stream key"
+value_type = "resource_id"
+required = true
+constraint = "prefix"
+risk_emphasis = "normal"
+
+[[capabilities.authorization.approval_schema.fields]]
+path = "/resource/group"
+label = "Consumer group"
+value_type = "resource_id"
+required = false
+constraint = "exact"
+risk_emphasis = "normal"
+
+[capabilities.session_handoff]
+capabilities = ["redis.stream_read"]
+
+[capabilities.session_handoff.purpose]
+kind = "watch_stream"
+
+[capabilities.session_handoff.live_session]
+protocol_version = 1
+start_risk = "read_only"
+
+[capabilities.session_handoff.live_session.kind]
+kind = "cursor"
+
+[capabilities.session_handoff.live_session.resource]
+resource_type = "redis_stream"
+identity_fields = ["/key"]
+audit_identity = "fingerprint"
+
+[capabilities.session_handoff.live_session.resource.identity_schema]
+additionalProperties = false
+required = ["key"]
+type = "object"
+
+[capabilities.session_handoff.live_session.resource.identity_schema.dependentRequired]
+consumer = ["group"]
+group = ["consumer"]
+
+[capabilities.session_handoff.live_session.resource.identity_schema.properties.consumer]
+maxLength = 256
+minLength = 1
+type = "string"
+
+[capabilities.session_handoff.live_session.resource.identity_schema.properties.group]
+maxLength = 256
+minLength = 1
+type = "string"
+
+[capabilities.session_handoff.live_session.resource.identity_schema.properties.key]
+maxLength = 1024
+minLength = 1
+type = "string"
+
+[capabilities.session_handoff.live_session.start_parameters_schema]
+additionalProperties = false
+type = "object"
+
+[capabilities.session_handoff.live_session.start_parameters_schema.properties.block_ms]
+default = 5000
+maximum = 30000
+minimum = 1
+type = "integer"
+
+[capabilities.session_handoff.live_session.start_parameters_schema.properties.count]
+default = 100
+maximum = 500
+minimum = 1
+type = "integer"
+
+[capabilities.session_handoff.live_session.start_parameters_schema.properties.noack]
+default = false
+type = "boolean"
+
+[capabilities.session_handoff.live_session.start_parameters_schema.properties.start_id]
+maxLength = 128
+minLength = 1
+type = "string"
+
+[capabilities.session_handoff.live_session.event_schema]
+additionalProperties = false
+required = [
+    "id",
+    "fields",
+    "fields_truncated",
+]
+type = "object"
+
+[capabilities.session_handoff.live_session.event_schema.properties.fields]
+type = "object"
+
+[capabilities.session_handoff.live_session.event_schema.properties.fields.additionalProperties]
+type = "string"
+
+[capabilities.session_handoff.live_session.event_schema.properties.fields_truncated]
+type = "boolean"
+
+[capabilities.session_handoff.live_session.event_schema.properties.id]
+type = "string"
+
+[capabilities.session_handoff.live_session.operations]
+events = "redis.stream_read"
+
+[capabilities.session_handoff.live_session.buffer]
+max_events = 500
+max_bytes = 1048576
+overflow = "drop_oldest"
+
+[capabilities.session_handoff.live_session.reconnect]
+mode = "transient"
+max_attempts = 3
+initial_backoff_ms = 250
+max_backoff_ms = 2000
+resume = "best_effort_cursor"
+cursor_kind = "event_id"
+
+[capabilities.session_handoff.live_session.delivery]
+backpressure = "source_paced"
+cursor_scope = "required"
+max_read_wait_ms = 30000
+
+[capabilities.session_handoff.live_session.delivery.heartbeat]
+interval_ms = 15000
+idle_timeout_ms = 60000
+
+[capabilities.session_handoff.live_session.control]
+cancel = "call_and_source"
+close = "stop_observation"
