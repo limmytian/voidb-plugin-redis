@@ -769,3 +769,7 @@ idle_timeout_ms = 60000
 [capabilities.session_handoff.live_session.control]
 cancel = "call_and_source"
 close = "stop_observation"
+
+[requirements]
+voidb_core = ">=0.3.3"
+platforms = ["darwin", "linux"]
