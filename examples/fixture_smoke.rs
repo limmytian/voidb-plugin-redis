@@ -725,6 +725,7 @@ fn unavailable_config() -> RedisConfig {
     }
 }
 
+#[allow(clippy::result_large_err, reason = "Preserve the shared SDK capability error contract.")]
 async fn invoke(
     config: &RedisConfig,
     capability_id: &str,
