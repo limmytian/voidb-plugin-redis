@@ -1,0 +1,272 @@
+{
+  "profile_label": "fixture-redis-ops",
+  "server_label": "fixture-redis-local",
+  "connection_kind": "tcp",
+  "db": 0,
+  "status": "fixture redis key-space ready",
+  "target_error": "target error: READONLY You can't write against a read only replica (triage lock active)",
+  "error_keys": ["session:locked:ephemeral"],
+  "error_message": "target error: permission denied while mutating locked key (fixture)",
+  "scan_pages": [
+    {
+      "cursor": 0,
+      "next_cursor": 42,
+      "keys": [
+        { "key": "session:abc123", "key_type": "string", "ttl": 1800 },
+        { "key": "session:def456", "key_type": "string", "ttl": 60 },
+        { "key": "session:locked:ephemeral", "key_type": "string", "ttl": -1 },
+        { "key": "cache:products:42", "key_type": "hash", "ttl": 3600 },
+        { "key": "queue:email:pending", "key_type": "list", "ttl": -1 },
+        { "key": "tags:popular", "key_type": "set", "ttl": -1 },
+        { "key": "leaderboard:global", "key_type": "zset", "ttl": 86400 },
+        { "key": "config:feature-flags", "key_type": "hash", "ttl": -1 }
+      ]
+    },
+    {
+      "cursor": 42,
+      "next_cursor": 0,
+      "keys": [
+        { "key": "cache:products:43", "key_type": "hash", "ttl": 3600 },
+        { "key": "ratelimit:ip:10.0.0.1", "key_type": "string", "ttl": 30 },
+        { "key": "stream:audit:events", "key_type": "stream", "ttl": -1 }
+      ]
+    }
+  ],
+  "previews": [
+    {
+      "key": "session:abc123",
+      "key_type": "string",
+      "ttl": 1800,
+      "size": 28,
+      "memory_bytes": 96,
+      "lines": ["{\"subject\":\"user-42\",\"role\":\"triage\"}", "(28 bytes; pretty-printed when valid JSON, preview bounded at 64 KiB)"],
+      "has_more": false,
+      "more_lines": []
+    },
+    {
+      "key": "session:def456",
+      "key_type": "string",
+      "ttl": 60,
+      "size": 17,
+      "memory_bytes": 88,
+      "lines": ["opaque-opaque-17b", "(17 bytes)"],
+      "has_more": false,
+      "more_lines": []
+    },
+    {
+      "key": "session:locked:ephemeral",
+      "key_type": "string",
+      "ttl": -1,
+      "size": 9,
+      "memory_bytes": 72,
+      "lines": ["ephemeral", "(9 bytes)"],
+      "has_more": false,
+      "more_lines": []
+    },
+    {
+      "key": "cache:products:42",
+      "key_type": "hash",
+      "ttl": 3600,
+      "size": 64,
+      "memory_bytes": 4096,
+      "lines": [
+        "Fields: 64",
+        "",
+        "sku: WIDG-0042",
+        "name: Telemetry Widget",
+        "price_usd: 199.00",
+        "updated_at: 2026-11-02T09:15:00Z",
+        "sku: WIDG-0043",
+        "name: Telemetry Widget Mk II",
+        "price_usd: 249.00",
+        "updated_at: 2026-11-02T10:30:00Z"
+      ],
+      "has_more": true,
+      "more_lines": [
+        "sku: WIDG-0044",
+        "name: Telemetry Widget Mk III",
+        "price_usd: 299.00",
+        "updated_at: 2026-11-02T11:45:00Z",
+        "(continuation loaded through FetchPreviewMore)"
+      ]
+    },
+    {
+      "key": "queue:email:pending",
+      "key_type": "list",
+      "ttl": -1,
+      "size": 4,
+      "memory_bytes": 256,
+      "lines": [
+        "Length: 4",
+        "",
+        "[0] welcome:user-1001",
+        "[1] reset:user-1002",
+        "[2] invoice:user-1003",
+        "[3] digest:user-1004"
+      ],
+      "has_more": false,
+      "more_lines": []
+    },
+    {
+      "key": "tags:popular",
+      "key_type": "set",
+      "ttl": -1,
+      "size": 5,
+      "memory_bytes": 200,
+      "lines": [
+        "Members: 5",
+        "",
+        "- redis",
+        "- ratatui",
+        "- triage",
+        "- fixture",
+        "- ops"
+      ],
+      "has_more": false,
+      "more_lines": []
+    },
+    {
+      "key": "leaderboard:global",
+      "key_type": "zset",
+      "ttl": 86400,
+      "size": 3,
+      "memory_bytes": 240,
+      "lines": [
+        "Members: 3",
+        "",
+        "98.20: operator-a",
+        "91.75: operator-b",
+        "84.10: operator-c"
+      ],
+      "has_more": false,
+      "more_lines": []
+    },
+    {
+      "key": "config:feature-flags",
+      "key_type": "hash",
+      "ttl": -1,
+      "size": 6,
+      "memory_bytes": 320,
+      "lines": [
+        "Fields: 6",
+        "",
+        "data_inspector_tui: pilot",
+        "sync_enabled: true",
+        "audit_verbose: false",
+        "telemetry: opt-in",
+        "maintenance_window: 02:00-04:00",
+        "degraded_mode: false"
+      ],
+      "has_more": false,
+      "more_lines": []
+    },
+    {
+      "key": "cache:products:43",
+      "key_type": "hash",
+      "ttl": 3600,
+      "size": 6,
+      "memory_bytes": 384,
+      "lines": [
+        "Fields: 6",
+        "",
+        "sku: WIDG-0100",
+        "name: Fixture Widget",
+        "price_usd: 9.99",
+        "updated_at: 2026-11-02T08:00:00Z"
+      ],
+      "has_more": false,
+      "more_lines": []
+    },
+    {
+      "key": "ratelimit:ip:10.0.0.1",
+      "key_type": "string",
+      "ttl": 30,
+      "size": 2,
+      "memory_bytes": 64,
+      "lines": ["41", "(2 bytes)"],
+      "has_more": false,
+      "more_lines": []
+    },
+    {
+      "key": "stream:audit:events",
+      "key_type": "stream",
+      "ttl": -1,
+      "size": 2,
+      "memory_bytes": 512,
+      "lines": [
+        "Length: 2",
+        "",
+        "1730544000000-0",
+        "  event: key_delete",
+        "  actor: operator-a",
+        "  target: session:stale",
+        "",
+        "1730544060000-0",
+        "  event: ttl_update",
+        "  actor: operator-b",
+        "  target: cache:products:42",
+        ""
+      ],
+      "has_more": false,
+      "more_lines": []
+    }
+  ],
+  "server_info": [
+    {
+      "name": "server",
+      "entries": [
+        ["redis_version", "7.2.5"],
+        ["redis_mode", "standalone"],
+        ["os", "Linux 6.6.0 fixture"],
+        ["arch_bits", "64"],
+        ["process_id", "4200"],
+        ["run_id", "fixture-run-id-0001"],
+        ["uptime_in_seconds", "86400"]
+      ]
+    },
+    {
+      "name": "clients",
+      "entries": [
+        ["connected_clients", "6"],
+        ["blocked_clients", "0"],
+        ["maxclients", "10000"]
+      ]
+    },
+    {
+      "name": "memory",
+      "entries": [
+        ["used_memory_human", "12.50M"],
+        ["used_memory_peak_human", "18.20M"],
+        ["mem_allocator", "jemalloc-5.3.0"]
+      ]
+    },
+    {
+      "name": "stats",
+      "entries": [
+        ["total_connections_received", "1204"],
+        ["total_commands_processed", "52310"],
+        ["expired_keys", "452"],
+        ["keyspace_hits", "39001"],
+        ["keyspace_misses", "2100"]
+      ]
+    }
+  ],
+  "slowlog": [
+    {
+      "id": 14,
+      "timestamp": 1730544005,
+      "duration_us": 250000,
+      "command": "KEYS *",
+      "client_addr": "127.0.0.1:51000",
+      "client_name": "triage-operator"
+    },
+    {
+      "id": 13,
+      "timestamp": 1730543900,
+      "duration_us": 120000,
+      "command": "SMEMBERS tags:popular",
+      "client_addr": "127.0.0.1:51001",
+      "client_name": "fixture-worker"
+    }
+  ]
+}
