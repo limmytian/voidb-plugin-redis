@@ -770,6 +770,10 @@ idle_timeout_ms = 60000
 cancel = "call_and_source"
 close = "stop_observation"
 
+[ui]
+tui = true
+raw_input = false
+
 [requirements]
 voidb_core = ">=0.3.3"
 platforms = ["darwin", "linux"]

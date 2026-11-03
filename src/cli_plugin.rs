@@ -1,11 +1,18 @@
+use std::fs;
+
 use async_trait::async_trait;
-use clap::{Arg, ArgMatches, Command};
+use chrono::Utc;
+use clap::{Arg, ArgAction, ArgMatches, Command};
 use voidb_core::plugin::cli::{CliContext, CliPlugin};
-use voidb_core::VoidbError;
+use voidb_core::{ConnectionProfileRef, TuiLaunchRequest, VoidbError, build_tui_launch_plan};
 
 use crate::config::RedisConfig;
 use crate::redis_ops;
 use crate::service::RedisService;
+use crate::tui::{
+    RedisTuiLaunch, RedisTuiSource, build_redis_tui_evidence, run_redis_tui,
+    write_redis_tui_preflight,
+};
 
 pub struct RedisCliPlugin;
 
@@ -88,8 +95,7 @@ impl CliPlugin for RedisCliPlugin {
                 .about("Show server info")
                 .arg(conn_arg.clone())
                 .arg(
-                    Arg::new("section")
-                        .help("Info section (server, memory, clients, stats, etc.)"),
+                    Arg::new("section").help("Info section (server, memory, clients, stats, etc.)"),
                 ),
             Command::new("exec")
                 .about("Execute a raw Redis command")
@@ -111,6 +117,66 @@ impl CliPlugin for RedisCliPlugin {
                         .action(clap::ArgAction::SetTrue)
                         .help("Read connection configuration JSON from stdin"),
                 ),
+            Command::new("tui")
+                .about("Launch the standalone Redis key-space TUI (pilot)")
+                .arg(
+                    Arg::new("profile")
+                        .long("profile")
+                        .value_name("PROFILE")
+                        .conflicts_with("connection")
+                        .help("Profile name, id:<id>, or name:<name>"),
+                )
+                .arg(
+                    Arg::new("connection")
+                        .short('c')
+                        .long("connection")
+                        .value_name("CONNECTION")
+                        .conflicts_with("profile")
+                        .help("Legacy connection name"),
+                )
+                .arg(
+                    Arg::new("fixture").long("fixture").value_name("PATH").help(
+                        "Load deterministic Redis TUI fixture JSON instead of opening a server",
+                    ),
+                )
+                .arg(
+                    Arg::new("purpose")
+                        .long("purpose")
+                        .value_name("PURPOSE")
+                        .default_value("operations")
+                        .help("Launch purpose, for example operations or triage"),
+                )
+                .arg(
+                    Arg::new("readonly")
+                        .long("readonly")
+                        .action(ArgAction::SetTrue)
+                        .help("Stage operation plans but block mutating service commands"),
+                )
+                .arg(
+                    Arg::new("no-restore")
+                        .long("no-restore")
+                        .action(ArgAction::SetTrue)
+                        .help("Start without restoring plugin-owned UI state"),
+                )
+                .arg(
+                    Arg::new("db")
+                        .short('d')
+                        .long("db")
+                        .value_parser(clap::value_parser!(u8))
+                        .help("Database number (overrides connection config)"),
+                )
+                .arg(
+                    Arg::new("format")
+                        .long("format")
+                        .value_parser(["json"])
+                        .help("Emit secret-free preflight JSON and exit"),
+                )
+                .arg(
+                    Arg::new("evidence")
+                        .long("evidence")
+                        .value_name("PATH")
+                        .help("Write fixture-backed standalone Redis TUI evidence JSON and exit"),
+                ),
         ]
     }
 
@@ -130,6 +196,7 @@ impl CliPlugin for RedisCliPlugin {
             "info" => self.handle_info(matches, ctx).await,
             "exec" => self.handle_exec(matches, ctx).await,
             "test" => self.handle_test(matches, ctx).await,
+            "tui" => self.handle_tui(matches, ctx).await,
             _ => Err(VoidbError::Plugin(format!("Unknown command: {}", command))),
         }
     }
@@ -178,10 +245,128 @@ impl RedisCliPlugin {
         Ok(redis_config)
     }
 
-    fn get_service(
+    fn parse_tui_launch(
         matches: &ArgMatches,
         ctx: &CliContext,
-    ) -> Result<RedisService, VoidbError> {
+    ) -> Result<RedisTuiLaunch, VoidbError> {
+        let fixture_path = matches.get_one::<String>("fixture").cloned();
+        let purpose = matches
+            .get_one::<String>("purpose")
+            .cloned()
+            .unwrap_or_else(|| "operations".to_string());
+        let readonly = matches.get_flag("readonly");
+        let restore = !matches.get_flag("no-restore");
+        let db_override = matches.get_one::<u8>("db").copied();
+
+        if let Some(profile_ref) = matches.get_one::<String>("profile") {
+            let (profile, connection) =
+                ctx.resolve_profile_connection(profile_ref, Some("redis"))?;
+            let mut config: RedisConfig = connection
+                .plugin_config
+                .as_ref()
+                .ok_or_else(|| VoidbError::Connection("Missing plugin_config".to_string()))
+                .and_then(|pc| {
+                    serde_json::from_value(pc.clone())
+                        .map_err(|e| VoidbError::Connection(format!("Invalid Redis config: {}", e)))
+                })?;
+            if let Some(db) = db_override {
+                config.db = db;
+            }
+            let profile_arg = profile_ref_arg(profile_ref, &profile.id);
+            let request = TuiLaunchRequest::new("redis", profile_arg, purpose.clone())
+                .readonly(readonly)
+                .restore(restore)
+                .raw_input(false);
+            let launch_plan = build_tui_launch_plan(&profile, request, "voidb-cli", Utc::now())?;
+
+            return Ok(RedisTuiLaunch {
+                profile_label: profile.name,
+                config: Some(config),
+                source: RedisTuiSource::Profile,
+                fixture_path,
+                purpose,
+                readonly,
+                restore,
+                launch_plan: Some(launch_plan),
+            });
+        }
+
+        if let Some(conn_name) = matches.get_one::<String>("connection") {
+            let config = Self::parse_config(conn_name, db_override, ctx)?;
+            return Ok(RedisTuiLaunch {
+                profile_label: conn_name.clone(),
+                config: Some(config),
+                source: RedisTuiSource::Connection,
+                fixture_path,
+                purpose,
+                readonly,
+                restore,
+                launch_plan: None,
+            });
+        }
+
+        if fixture_path.is_some() {
+            return Ok(RedisTuiLaunch {
+                profile_label: "fixture".to_string(),
+                config: None,
+                source: RedisTuiSource::Fixture,
+                fixture_path,
+                purpose,
+                readonly,
+                restore,
+                launch_plan: None,
+            });
+        }
+
+        Err(VoidbError::Plugin(
+            "redis tui requires --profile, --connection, or --fixture".to_string(),
+        ))
+    }
+
+    async fn handle_tui(&self, matches: &ArgMatches, ctx: &CliContext) -> Result<(), VoidbError> {
+        let launch = Self::parse_tui_launch(matches, ctx)?;
+        if let Some(path) = matches.get_one::<String>("evidence") {
+            let evidence = build_redis_tui_evidence(&launch)
+                .map_err(|e| VoidbError::Plugin(format!("Redis TUI evidence failed: {}", e)))?;
+            let rendered = serde_json::to_string_pretty(&evidence).map_err(|e| {
+                VoidbError::Plugin(format!("Redis TUI evidence serialization failed: {}", e))
+            })?;
+            if let Some(parent) = std::path::Path::new(path).parent()
+                && !parent.as_os_str().is_empty()
+            {
+                fs::create_dir_all(parent).map_err(|e| {
+                    VoidbError::Plugin(format!(
+                        "Failed to create Redis TUI evidence directory '{}': {}",
+                        parent.display(),
+                        e
+                    ))
+                })?;
+            }
+            fs::write(path, rendered).map_err(|e| {
+                VoidbError::Plugin(format!(
+                    "Failed to write Redis TUI evidence '{}': {}",
+                    path, e
+                ))
+            })?;
+            println!("Wrote Redis TUI evidence to {path}");
+            return Ok(());
+        }
+
+        if matches
+            .get_one::<String>("format")
+            .is_some_and(|format| format == "json")
+        {
+            write_redis_tui_preflight(&launch)
+                .map_err(|e| VoidbError::Plugin(format!("Redis TUI preflight failed: {}", e)))?;
+            return Ok(());
+        }
+
+        run_redis_tui(launch)
+            .await
+            .map_err(|e| VoidbError::Plugin(format!("Redis TUI failed: {}", e)))
+    }
+
+    fn get_service(matches: &ArgMatches, ctx: &CliContext) -> Result<RedisService, VoidbError> {
         let conn_name = matches.get_one::<String>("connection").unwrap();
         let db_override = matches.get_one::<u8>("db").copied();
         let config = Self::parse_config(conn_name, db_override, ctx)?;
@@ -197,11 +382,7 @@ impl RedisCliPlugin {
         Ok(RedisService::new_direct(config))
     }
 
-    async fn handle_keys(
-        &self,
-        matches: &ArgMatches,
-        ctx: &CliContext,
-    ) -> Result<(), VoidbError> {
+    async fn handle_keys(&self, matches: &ArgMatches, ctx: &CliContext) -> Result<(), VoidbError> {
         let svc = Self::get_service(matches, ctx)?;
         let pattern = matches.get_one::<String>("pattern").unwrap();
         let limit: usize = matches
@@ -241,18 +422,11 @@ impl RedisCliPlugin {
         Ok(())
     }
 
-    async fn handle_get(
-        &self,
-        matches: &ArgMatches,
-        ctx: &CliContext,
-    ) -> Result<(), VoidbError> {
+    async fn handle_get(&self, matches: &ArgMatches, ctx: &CliContext) -> Result<(), VoidbError> {
         let svc = Self::get_service(matches, ctx)?;
         let key = matches.get_one::<String>("key").unwrap();
 
-        let data = svc
-            .fetch_key_data(key)
-            .await
-            .map_err(VoidbError::Plugin)?;
+        let data = svc.fetch_key_data(key).await.map_err(VoidbError::Plugin)?;
 
         println!("Key:  {}", data.key);
         println!("Type: {}", data.key_type.label());
@@ -293,11 +467,7 @@ impl RedisCliPlugin {
         Ok(())
     }
 
-    async fn handle_set(
-        &self,
-        matches: &ArgMatches,
-        ctx: &CliContext,
-    ) -> Result<(), VoidbError> {
+    async fn handle_set(&self, matches: &ArgMatches, ctx: &CliContext) -> Result<(), VoidbError> {
         let svc = Self::get_service(matches, ctx)?;
         let key = matches.get_one::<String>("key").unwrap();
         let value = matches.get_one::<String>("value").unwrap();
@@ -310,27 +480,17 @@ impl RedisCliPlugin {
         Ok(())
     }
 
-    async fn handle_del(
-        &self,
-        matches: &ArgMatches,
-        ctx: &CliContext,
-    ) -> Result<(), VoidbError> {
+    async fn handle_del(&self, matches: &ArgMatches, ctx: &CliContext) -> Result<(), VoidbError> {
         let svc = Self::get_service(matches, ctx)?;
         let key = matches.get_one::<String>("key").unwrap();
 
-        svc.delete_key(key)
-            .await
-            .map_err(VoidbError::Plugin)?;
+        svc.delete_key(key).await.map_err(VoidbError::Plugin)?;
 
         println!("Deleted: {}", key);
         Ok(())
     }
 
-    async fn handle_ttl(
-        &self,
-        matches: &ArgMatches,
-        ctx: &CliContext,
-    ) -> Result<(), VoidbError> {
+    async fn handle_ttl(&self, matches: &ArgMatches, ctx: &CliContext) -> Result<(), VoidbError> {
         let svc = Self::get_service(matches, ctx)?;
         let key = matches.get_one::<String>("key").unwrap();
 
@@ -354,11 +514,7 @@ impl RedisCliPlugin {
         Ok(())
     }
 
-    async fn handle_type(
-        &self,
-        matches: &ArgMatches,
-        ctx: &CliContext,
-    ) -> Result<(), VoidbError> {
+    async fn handle_type(&self, matches: &ArgMatches, ctx: &CliContext) -> Result<(), VoidbError> {
         let svc = Self::get_service(matches, ctx)?;
         let key = matches.get_one::<String>("key").unwrap();
 
@@ -371,18 +527,11 @@ impl RedisCliPlugin {
         Ok(())
     }
 
-    async fn handle_info(
-        &self,
-        matches: &ArgMatches,
-        ctx: &CliContext,
-    ) -> Result<(), VoidbError> {
+    async fn handle_info(&self, matches: &ArgMatches, ctx: &CliContext) -> Result<(), VoidbError> {
         let section = matches.get_one::<String>("section");
         let svc = Self::get_service_no_db(matches, ctx)?;
 
-        let sections = svc
-            .fetch_server_info()
-            .await
-            .map_err(VoidbError::Plugin)?;
+        let sections = svc.fetch_server_info().await.map_err(VoidbError::Plugin)?;
 
         for s in &sections {
             if let Some(filter) = section
@@ -399,14 +548,14 @@ impl RedisCliPlugin {
         Ok(())
     }
 
-    async fn handle_exec(
-        &self,
-        matches: &ArgMatches,
-        ctx: &CliContext,
-    ) -> Result<(), VoidbError> {
+    async fn handle_exec(&self, matches: &ArgMatches, ctx: &CliContext) -> Result<(), VoidbError> {
         let svc = Self::get_service(matches, ctx)?;
         let parts: Vec<&String> = matches.get_many::<String>("command").unwrap().collect();
-        let command_str = parts.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(" ");
+        let command_str = parts
+            .iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
 
         let result = svc
             .execute_command(&command_str)
@@ -422,11 +571,7 @@ impl RedisCliPlugin {
         Ok(())
     }
 
-    async fn handle_test(
-        &self,
-        matches: &ArgMatches,
-        ctx: &CliContext,
-    ) -> Result<(), VoidbError> {
+    async fn handle_test(&self, matches: &ArgMatches, ctx: &CliContext) -> Result<(), VoidbError> {
         if matches.get_flag("stdin-config") {
             use std::io::Read;
             let mut input = String::new();
@@ -435,16 +580,17 @@ impl RedisCliPlugin {
                 .map_err(|e| VoidbError::Config(format!("Failed to read stdin: {}", e)))?;
             let val: serde_json::Value = serde_json::from_str(&input)
                 .map_err(|e| VoidbError::Config(format!("Invalid JSON on stdin: {}", e)))?;
-            let conn: voidb_core::connection::ConnectionConfig = if val.get("plugin_config").is_some() {
-                serde_json::from_value(val).map_err(|e| VoidbError::Config(e.to_string()))?
-            } else {
-                voidb_core::connection::ConnectionConfig {
-                    name: "stdin".into(),
-                    db_type: voidb_core::connection::DatabaseType::Plugin,
-                    plugin_id: Some("redis".into()),
-                    plugin_config: Some(val),
-                }
-            };
+            let conn: voidb_core::connection::ConnectionConfig =
+                if val.get("plugin_config").is_some() {
+                    serde_json::from_value(val).map_err(|e| VoidbError::Config(e.to_string()))?
+                } else {
+                    voidb_core::connection::ConnectionConfig {
+                        name: "stdin".into(),
+                        db_type: voidb_core::connection::DatabaseType::Plugin,
+                        plugin_id: Some("redis".into()),
+                        plugin_config: Some(val),
+                    }
+                };
             match crate::test_connection(&conn).await {
                 Ok(msg) => {
                     println!("{}", msg);
@@ -483,5 +629,20 @@ impl RedisCliPlugin {
                 "Either --connection or --stdin-config is required".into(),
             ))
         }
+    }
+}
+
+fn profile_ref_arg(input: &str, profile_id: &str) -> ConnectionProfileRef {
+    if let Some(id) = input.strip_prefix("id:") {
+        ConnectionProfileRef::Id(id.to_string())
+    } else if let Some(name) = input
+        .strip_prefix("name:")
+        .or_else(|| input.strip_prefix("alias:"))
+    {
+        ConnectionProfileRef::Name(name.to_string())
+    } else if input == profile_id {
+        ConnectionProfileRef::Id(input.to_string())
+    } else {
+        ConnectionProfileRef::Name(input.to_string())
     }
 }
