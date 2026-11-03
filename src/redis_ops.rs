@@ -462,7 +462,12 @@ pub async fn fetch_key_preview(url: &str, db: u8, key: &str) -> PreviewResult {
             };
             (Some(len), text, cursor, has_more)
         }
-        RedisKeyType::Unknown => (None, "Unknown key type".to_string(), PreviewCursor::None, false),
+        RedisKeyType::Unknown => (
+            None,
+            "Unknown key type".to_string(),
+            PreviewCursor::None,
+            false,
+        ),
     };
 
     Ok(KeyPreview {
@@ -883,11 +888,10 @@ pub async fn fetch_key_data(url: &str, db: u8, key: &str) -> KeyEditDataResult {
                 .unwrap_or_default();
             let messages = parse_stream_entries(&raw);
             let has_more = messages.len() == STREAM_BATCH && (messages.len() as u64) < len;
-            if has_more
-                && let Some((last_id, _)) = messages.last() {
-                    data.collection_cursor = EditorCursor::StreamLastId(last_id.clone());
-                    data.collection_has_more = true;
-                }
+            if has_more && let Some((last_id, _)) = messages.last() {
+                data.collection_cursor = EditorCursor::StreamLastId(last_id.clone());
+                data.collection_has_more = true;
+            }
             data.stream_messages = Some(messages);
         }
         RedisKeyType::Unknown => {}
@@ -1020,10 +1024,11 @@ pub async fn fetch_key_data_more(
                 .unwrap_or_default();
             let messages = parse_stream_entries(&raw);
             if messages.len() == STREAM_BATCH
-                && let Some((id, _)) = messages.last() {
-                    result.cursor = EditorCursor::StreamLastId(id.clone());
-                    result.has_more = true;
-                }
+                && let Some((id, _)) = messages.last()
+            {
+                result.cursor = EditorCursor::StreamLastId(id.clone());
+                result.has_more = true;
+            }
             result.stream_messages = Some(messages);
         }
         EditorCursor::None => {}
@@ -1139,10 +1144,7 @@ pub async fn search_key_data(
                 .query_async(&mut conn)
                 .await
                 .unwrap_or_default();
-            let filtered: Vec<String> = items
-                .into_iter()
-                .filter(|v| v.contains(pattern))
-                .collect();
+            let filtered: Vec<String> = items.into_iter().filter(|v| v.contains(pattern)).collect();
             data.list_items = Some(filtered);
         }
         RedisKeyType::ZSet => {
@@ -1357,7 +1359,9 @@ pub async fn fetch_server_info(url: &str) -> ServerInfoResult {
                 entries: Vec::new(),
             };
         } else if let Some((key, value)) = line.split_once(':') {
-            current_section.entries.push((key.to_string(), value.to_string()));
+            current_section
+                .entries
+                .push((key.to_string(), value.to_string()));
         }
     }
     if !current_section.entries.is_empty() {
@@ -1397,31 +1401,23 @@ pub async fn fetch_slowlog(url: &str, count: usize) -> SlowLogResult {
                 _ => 0,
             };
             let command = match parts.get(3) {
-                Some(redis::Value::Array(cmd_parts)) => {
-                    cmd_parts
-                        .iter()
-                        .map(|v| match v {
-                            redis::Value::BulkString(b) => {
-                                String::from_utf8_lossy(b).to_string()
-                            }
-                            redis::Value::Int(n) => n.to_string(),
-                            _ => format!("{:?}", v),
-                        })
-                        .collect::<Vec<_>>()
-                        .join(" ")
-                }
+                Some(redis::Value::Array(cmd_parts)) => cmd_parts
+                    .iter()
+                    .map(|v| match v {
+                        redis::Value::BulkString(b) => String::from_utf8_lossy(b).to_string(),
+                        redis::Value::Int(n) => n.to_string(),
+                        _ => format!("{:?}", v),
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" "),
                 _ => String::new(),
             };
             let client_addr = match parts.get(4) {
-                Some(redis::Value::BulkString(b)) => {
-                    String::from_utf8_lossy(b).to_string()
-                }
+                Some(redis::Value::BulkString(b)) => String::from_utf8_lossy(b).to_string(),
                 _ => String::new(),
             };
             let client_name = match parts.get(5) {
-                Some(redis::Value::BulkString(b)) => {
-                    String::from_utf8_lossy(b).to_string()
-                }
+                Some(redis::Value::BulkString(b)) => String::from_utf8_lossy(b).to_string(),
                 _ => String::new(),
             };
             entries.push(SlowLogEntry {
@@ -1537,35 +1533,32 @@ fn parse_stream_entries(raw: &[redis::Value]) -> Vec<(String, Vec<(String, Strin
     let mut messages = Vec::new();
     for entry in raw {
         if let redis::Value::Array(parts) = entry
-            && parts.len() >= 2 {
-                let id = match &parts[0] {
-                    redis::Value::BulkString(b) => String::from_utf8_lossy(b).to_string(),
-                    _ => continue,
-                };
-                let fields = if let redis::Value::Array(fv) = &parts[1] {
-                    let mut pairs = Vec::new();
-                    let mut iter = fv.iter();
-                    while let (Some(f), Some(v)) = (iter.next(), iter.next()) {
-                        let field = match f {
-                            redis::Value::BulkString(b) => {
-                                String::from_utf8_lossy(b).to_string()
-                            }
-                            _ => continue,
-                        };
-                        let val = match v {
-                            redis::Value::BulkString(b) => {
-                                String::from_utf8_lossy(b).to_string()
-                            }
-                            _ => continue,
-                        };
-                        pairs.push((field, val));
-                    }
-                    pairs
-                } else {
-                    Vec::new()
-                };
-                messages.push((id, fields));
-            }
+            && parts.len() >= 2
+        {
+            let id = match &parts[0] {
+                redis::Value::BulkString(b) => String::from_utf8_lossy(b).to_string(),
+                _ => continue,
+            };
+            let fields = if let redis::Value::Array(fv) = &parts[1] {
+                let mut pairs = Vec::new();
+                let mut iter = fv.iter();
+                while let (Some(f), Some(v)) = (iter.next(), iter.next()) {
+                    let field = match f {
+                        redis::Value::BulkString(b) => String::from_utf8_lossy(b).to_string(),
+                        _ => continue,
+                    };
+                    let val = match v {
+                        redis::Value::BulkString(b) => String::from_utf8_lossy(b).to_string(),
+                        _ => continue,
+                    };
+                    pairs.push((field, val));
+                }
+                pairs
+            } else {
+                Vec::new()
+            };
+            messages.push((id, fields));
+        }
     }
     messages
 }
@@ -1630,12 +1623,10 @@ pub(crate) fn format_redis_value(value: &redis::Value, indent: usize) -> String 
     match value {
         redis::Value::Nil => format!("{}(nil)", prefix),
         redis::Value::Int(n) => format!("{}(integer) {}", prefix, n),
-        redis::Value::BulkString(bytes) => {
-            match String::from_utf8(bytes.clone()) {
-                Ok(s) => format!("{}\"{}\"", prefix, s),
-                Err(_) => format!("{}(binary) {} bytes", prefix, bytes.len()),
-            }
-        }
+        redis::Value::BulkString(bytes) => match String::from_utf8(bytes.clone()) {
+            Ok(s) => format!("{}\"{}\"", prefix, s),
+            Err(_) => format!("{}(binary) {} bytes", prefix, bytes.len()),
+        },
         redis::Value::SimpleString(s) => format!("{}{}", prefix, s),
         redis::Value::Okay => format!("{}OK", prefix),
         redis::Value::Array(arr) | redis::Value::Set(arr) => {
@@ -1657,7 +1648,13 @@ pub(crate) fn format_redis_value(value: &redis::Value, indent: usize) -> String 
             for (i, (k, v)) in pairs.iter().enumerate() {
                 let k_str = format_redis_value(k, 0);
                 let v_str = format_redis_value(v, indent + 1);
-                out.push_str(&format!("{}{}) {} => {}\n", prefix, i + 1, k_str.trim(), v_str.trim()));
+                out.push_str(&format!(
+                    "{}{}) {} => {}\n",
+                    prefix,
+                    i + 1,
+                    k_str.trim(),
+                    v_str.trim()
+                ));
             }
             out.trim_end().to_string()
         }

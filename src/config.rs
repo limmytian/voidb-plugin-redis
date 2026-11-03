@@ -37,6 +37,9 @@ impl RedisConfig {
             (None, Some(p)) => format!(":{}@", p),
             _ => String::new(),
         };
-        format!("{}://{}{}:{}/{}", scheme, auth, self.host, self.port, self.db)
+        format!(
+            "{}://{}{}:{}/{}",
+            scheme, auth, self.host, self.port, self.db
+        )
     }
 }

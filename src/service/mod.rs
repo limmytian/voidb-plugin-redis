@@ -21,9 +21,7 @@ pub mod events;
 pub use commands::{
     EditCommand, ManageCommand, PreviewCommand, RedisCommand, ScanCommand, ServerCommand,
 };
-pub use events::{
-    EditEvent, ManageEvent, PreviewEvent, RedisEvent, ScanEvent, ServerEvent,
-};
+pub use events::{EditEvent, ManageEvent, PreviewEvent, RedisEvent, ScanEvent, ServerEvent};
 
 use std::sync::Arc;
 
@@ -96,8 +94,10 @@ impl PersistentRedisConnection {
 
     pub async fn close(mut self) {
         if let Some(mut connection) = self.connection.take() {
-            let _: Result<redis::Value, _> = redis::cmd("DISCARD").query_async(&mut connection).await;
-            let _: Result<redis::Value, _> = redis::cmd("UNWATCH").query_async(&mut connection).await;
+            let _: Result<redis::Value, _> =
+                redis::cmd("DISCARD").query_async(&mut connection).await;
+            let _: Result<redis::Value, _> =
+                redis::cmd("UNWATCH").query_async(&mut connection).await;
         }
     }
 }
@@ -163,7 +163,9 @@ impl RedisService {
     /// Scan keys matching a pattern. Direct mode only.
     pub async fn scan_keys(&self, cursor: u64, pattern: Option<&str>) -> ScanResult {
         match &self.mode {
-            ServiceMode::Direct { url, db } => redis_ops::scan_keys(url, *db, cursor, pattern).await,
+            ServiceMode::Direct { url, db } => {
+                redis_ops::scan_keys(url, *db, cursor, pattern).await
+            }
             ServiceMode::Channel { .. } => Err("scan_keys requires Direct mode".to_string()),
         }
     }
@@ -172,7 +174,9 @@ impl RedisService {
     pub async fn fetch_key_preview(&self, key: &str) -> redis_ops::PreviewResult {
         match &self.mode {
             ServiceMode::Direct { url, db } => redis_ops::fetch_key_preview(url, *db, key).await,
-            ServiceMode::Channel { .. } => Err("fetch_key_preview requires Direct mode".to_string()),
+            ServiceMode::Channel { .. } => {
+                Err("fetch_key_preview requires Direct mode".to_string())
+            }
         }
     }
 
@@ -212,7 +216,9 @@ impl RedisService {
     pub async fn fetch_server_info(&self) -> ServerInfoResult {
         match &self.mode {
             ServiceMode::Direct { url, .. } => redis_ops::fetch_server_info(url).await,
-            ServiceMode::Channel { .. } => Err("fetch_server_info requires Direct mode".to_string()),
+            ServiceMode::Channel { .. } => {
+                Err("fetch_server_info requires Direct mode".to_string())
+            }
         }
     }
 
@@ -238,21 +244,19 @@ impl RedisService {
         while let Some(cmd) = cmd_rx.recv().await {
             match cmd {
                 // === Connection lifecycle ===
-                RedisCommand::Connect { reply } => {
-                    match Self::open_connection(&url, db).await {
-                        Ok(c) => {
-                            conn = Some(c);
-                            let _ = event_tx.send(RedisEvent::Connected);
-                            let _ = tabs.request_render();
-                            let _ = reply.send(Ok(()));
-                        }
-                        Err(e) => {
-                            let _ = reply.send(Err(e.clone()));
-                            let _ = event_tx.send(RedisEvent::Error(e));
-                            let _ = tabs.request_render();
-                        }
+                RedisCommand::Connect { reply } => match Self::open_connection(&url, db).await {
+                    Ok(c) => {
+                        conn = Some(c);
+                        let _ = event_tx.send(RedisEvent::Connected);
+                        let _ = tabs.request_render();
+                        let _ = reply.send(Ok(()));
                     }
-                }
+                    Err(e) => {
+                        let _ = reply.send(Err(e.clone()));
+                        let _ = event_tx.send(RedisEvent::Error(e));
+                        let _ = tabs.request_render();
+                    }
+                },
 
                 RedisCommand::Disconnect => {
                     drop(conn.take());
@@ -306,7 +310,10 @@ impl RedisService {
     }
 
     /// Open a multiplexed connection with optional DB select.
-    async fn open_connection(url: &str, db: u8) -> Result<redis::aio::MultiplexedConnection, String> {
+    async fn open_connection(
+        url: &str,
+        db: u8,
+    ) -> Result<redis::aio::MultiplexedConnection, String> {
         let client = redis::Client::open(url).map_err(|e| format!("Client error: {}", e))?;
         let mut conn = client
             .get_multiplexed_async_connection()
@@ -345,16 +352,14 @@ impl RedisService {
                     }
                 }
             }
-            ScanCommand::FetchDbSizes => {
-                match redis_ops::fetch_db_sizes(url).await {
-                    Ok(sizes) => {
-                        let _ = event_tx.send(RedisEvent::Scan(ScanEvent::DbSizesLoaded(sizes)));
-                    }
-                    Err(e) => {
-                        let _ = event_tx.send(RedisEvent::Error(e));
-                    }
+            ScanCommand::FetchDbSizes => match redis_ops::fetch_db_sizes(url).await {
+                Ok(sizes) => {
+                    let _ = event_tx.send(RedisEvent::Scan(ScanEvent::DbSizesLoaded(sizes)));
                 }
-            }
+                Err(e) => {
+                    let _ = event_tx.send(RedisEvent::Error(e));
+                }
+            },
         }
         let _ = tabs.request_render();
     }
@@ -372,7 +377,8 @@ impl RedisService {
             PreviewCommand::FetchPreview { key } => {
                 match redis_ops::fetch_key_preview(url, db, &key).await {
                     Ok(preview) => {
-                        let _ = event_tx.send(RedisEvent::Preview(PreviewEvent::PreviewLoaded(preview)));
+                        let _ = event_tx
+                            .send(RedisEvent::Preview(PreviewEvent::PreviewLoaded(preview)));
                     }
                     Err(e) => {
                         let _ = event_tx.send(RedisEvent::Error(e));
@@ -382,7 +388,8 @@ impl RedisService {
             PreviewCommand::FetchPreviewMore { key, cursor } => {
                 match redis_ops::fetch_preview_more(url, db, &key, cursor).await {
                     Ok(more) => {
-                        let _ = event_tx.send(RedisEvent::Preview(PreviewEvent::PreviewMoreLoaded(more)));
+                        let _ = event_tx
+                            .send(RedisEvent::Preview(PreviewEvent::PreviewMoreLoaded(more)));
                     }
                     Err(e) => {
                         let _ = event_tx.send(RedisEvent::Error(e));
@@ -392,7 +399,8 @@ impl RedisService {
             PreviewCommand::FetchKeyData { key } => {
                 match redis_ops::fetch_key_data(url, db, &key).await {
                     Ok(data) => {
-                        let _ = event_tx.send(RedisEvent::Preview(PreviewEvent::KeyDataLoaded(data)));
+                        let _ =
+                            event_tx.send(RedisEvent::Preview(PreviewEvent::KeyDataLoaded(data)));
                     }
                     Err(e) => {
                         let _ = event_tx.send(RedisEvent::Error(e));
@@ -402,23 +410,27 @@ impl RedisService {
             PreviewCommand::FetchKeyDataMore { key, cursor } => {
                 match redis_ops::fetch_key_data_more(url, db, &key, cursor).await {
                     Ok(more) => {
-                        let _ = event_tx.send(RedisEvent::Preview(PreviewEvent::KeyDataMoreLoaded(more)));
+                        let _ = event_tx
+                            .send(RedisEvent::Preview(PreviewEvent::KeyDataMoreLoaded(more)));
                     }
                     Err(e) => {
                         let _ = event_tx.send(RedisEvent::Error(e));
                     }
                 }
             }
-            PreviewCommand::SearchKeyData { key, key_type, pattern } => {
-                match redis_ops::search_key_data(url, db, &key, key_type, &pattern).await {
-                    Ok(data) => {
-                        let _ = event_tx.send(RedisEvent::Preview(PreviewEvent::SearchDataLoaded(data)));
-                    }
-                    Err(e) => {
-                        let _ = event_tx.send(RedisEvent::Error(e));
-                    }
+            PreviewCommand::SearchKeyData {
+                key,
+                key_type,
+                pattern,
+            } => match redis_ops::search_key_data(url, db, &key, key_type, &pattern).await {
+                Ok(data) => {
+                    let _ =
+                        event_tx.send(RedisEvent::Preview(PreviewEvent::SearchDataLoaded(data)));
                 }
-            }
+                Err(e) => {
+                    let _ = event_tx.send(RedisEvent::Error(e));
+                }
+            },
         }
         let _ = tabs.request_render();
     }
@@ -448,9 +460,7 @@ impl RedisService {
             EditCommand::ListRemove { key, value } => {
                 redis_ops::list_remove(url, db, &key, &value).await
             }
-            EditCommand::SetAdd { key, member } => {
-                redis_ops::set_add(url, db, &key, &member).await
-            }
+            EditCommand::SetAdd { key, member } => redis_ops::set_add(url, db, &key, &member).await,
             EditCommand::SetRemove { key, member } => {
                 redis_ops::set_remove(url, db, &key, &member).await
             }
@@ -483,16 +493,14 @@ impl RedisService {
         tabs: &Arc<dyn TabManager>,
     ) {
         match cmd {
-            ManageCommand::DeleteKey { key } => {
-                match redis_ops::delete_key(url, db, &key).await {
-                    Ok(msg) => {
-                        let _ = event_tx.send(RedisEvent::Manage(ManageEvent::KeyDeleted(msg)));
-                    }
-                    Err(e) => {
-                        let _ = event_tx.send(RedisEvent::Error(e));
-                    }
+            ManageCommand::DeleteKey { key } => match redis_ops::delete_key(url, db, &key).await {
+                Ok(msg) => {
+                    let _ = event_tx.send(RedisEvent::Manage(ManageEvent::KeyDeleted(msg)));
                 }
-            }
+                Err(e) => {
+                    let _ = event_tx.send(RedisEvent::Error(e));
+                }
+            },
             ManageCommand::RenameKey { old_key, new_key } => {
                 match redis_ops::rename_key(url, db, &old_key, &new_key).await {
                     Ok(_) => {
@@ -529,36 +537,34 @@ impl RedisService {
         tabs: &Arc<dyn TabManager>,
     ) {
         match cmd {
-            ServerCommand::FetchServerInfo => {
-                match redis_ops::fetch_server_info(url).await {
-                    Ok(info) => {
-                        let _ = event_tx.send(RedisEvent::Server(ServerEvent::ServerInfoLoaded(info)));
-                    }
-                    Err(e) => {
-                        let _ = event_tx.send(RedisEvent::Error(e));
-                    }
+            ServerCommand::FetchServerInfo => match redis_ops::fetch_server_info(url).await {
+                Ok(info) => {
+                    let _ = event_tx.send(RedisEvent::Server(ServerEvent::ServerInfoLoaded(info)));
                 }
-            }
+                Err(e) => {
+                    let _ = event_tx.send(RedisEvent::Error(e));
+                }
+            },
             ServerCommand::FetchSlowLog { count } => {
                 match redis_ops::fetch_slowlog(url, count).await {
                     Ok(entries) => {
-                        let _ = event_tx.send(RedisEvent::Server(ServerEvent::SlowLogLoaded(entries)));
+                        let _ =
+                            event_tx.send(RedisEvent::Server(ServerEvent::SlowLogLoaded(entries)));
                     }
                     Err(e) => {
                         let _ = event_tx.send(RedisEvent::Error(e));
                     }
                 }
             }
-            ServerCommand::FetchClientList => {
-                match redis_ops::fetch_client_list(url).await {
-                    Ok(clients) => {
-                        let _ = event_tx.send(RedisEvent::Server(ServerEvent::ClientListLoaded(clients)));
-                    }
-                    Err(e) => {
-                        let _ = event_tx.send(RedisEvent::Error(e));
-                    }
+            ServerCommand::FetchClientList => match redis_ops::fetch_client_list(url).await {
+                Ok(clients) => {
+                    let _ =
+                        event_tx.send(RedisEvent::Server(ServerEvent::ClientListLoaded(clients)));
                 }
-            }
+                Err(e) => {
+                    let _ = event_tx.send(RedisEvent::Error(e));
+                }
+            },
         }
         let _ = tabs.request_render();
     }
