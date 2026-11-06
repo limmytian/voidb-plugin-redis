@@ -16,16 +16,16 @@ Independent process plugin for [VoidB](https://github.com/limmytian/voidb) to co
 
 ```bash
 # Connectivity test
-voidb-cli redis test --profile my-redis
+vb redis test --profile my-redis
 
 # Key inspection and data manipulation
-voidb-cli redis keys "user:*" --profile my-redis
-voidb-cli redis get "user:1" --profile my-redis
-voidb-cli redis set "user:1" '{"name":"Alice"}' --profile my-redis
-voidb-cli redis info --profile my-redis
+vb redis keys "user:*" --profile my-redis
+vb redis get "user:1" --profile my-redis
+vb redis set "user:1" '{"name":"Alice"}' --profile my-redis
+vb redis info --profile my-redis
 
 # Machine / Agent stdio-jsonrpc server
-voidb-cli redis serve
+vb redis serve
 ```
 
 ## Optional local SDK development
