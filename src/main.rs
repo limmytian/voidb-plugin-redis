@@ -179,7 +179,7 @@ fn run_server() -> Result<()> {
                         // message may echo malformed values, so redact it
                         // against the options document before surfacing it.
                         let (message, redaction) =
-                            voidb_core::redact_text_with_json(&error.to_string(), &options);
+                            voidb_core::redact_text_with_json(&error.to_string(), options);
                         CapabilityError {
                             category: CapabilityErrorCategory::Validation,
                             code: "redis.invalid_profile_options".into(),
